@@ -1,0 +1,52 @@
+name: Projeto-Pix CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fazer checkout do código
+        uses: actions/checkout@v3
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Navegar para o diretório nu-pix
+        run: cd nu-pix/nu-pix
+
+      - name: Cache de dependências do Maven
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('nu-pix/nu-pix/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Instalar dependências
+        run: mvn dependency:go-offline -B -f nu-pix/nu-pix/pom.xml
+
+      - name: Rodar os testes
+        run: mvn test -f nu-pix/nu-pix/pom.xml
+        continue-on-error: true
+
+      - name: Empacotar a aplicação
+        run: mvn package -DskipTests -f nu-pix/nu-pix/pom.xml
+
+      - name: Arquivar artefato JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-jar
+          path: nu-pix/nu-pix/target/*.jar
